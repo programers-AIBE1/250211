@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>supabase2</title>
+  </head>
+  <body>
+    <form id="user">
+      <section>
+        <label for="name">
+          <input type="text" name="name" />
+        </label>
+      </section>
+      <section>
+        <input type="file" id="avatar" />
+      </section>
+      <section>
+        <button>submit</button>
+      </section>
+    </form>
+    <main>
+      <section id="box"></section>
+      <button id="loading">load</button>
+    </main>
+    <script>
+      const SUPABASE_URL = "https://uvjsxotrtohdmryseqkg.supabase.co";
+      const SUPABASE_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2anN4b3RydG9oZG1yeXNlcWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkyMzY1NDIsImV4cCI6MjA1NDgxMjU0Mn0.RZ4tD_poSFXEYEogiIn82hWBbDYm8wgm5w38d2uE0Vo";
+      const TABLE_NAME = "test2";
+      const bucketName = "my-bucket";
+      const folderName = "uploads";
+
+      async function makeUser() {
+        const { files } = document.querySelector("#avatar");
+        const file = files[0];
+        const fileName = `${Date.now()}_${file.name}`; // 안겹치려고 // uuid.
+        const filePath = `${folderName}/${fileName}`;
+        const response = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/${bucketName}/${filePath}`,
+          {
+            method: "PUT",
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": file.type,
+            },
+            body: file,
+          }
+        );
+        console.log(await response.json());
+
+        const form = document.querySelector("#user");
+        const formData = new FormData(form);
+        const response2 = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({
+            name: formData.get("name"),
+            avatar: fileName,
+          }),
+        });
+        console.log(await response2.json());
+      }
+
+      document
+        .querySelector("#user")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+          await makeUser();
+        });
+      document
+        .querySelector("#loading")
+        .addEventListener("click", async (event) => {
+          const box = document.querySelector("#box");
+          const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${TABLE_NAME}`,
+            {
+              method: "GET",
+              headers: {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          const data = await response.json();
+          for (const u of data) {
+            const tmp = document.createElement("div");
+            const img = document.createElement("img");
+            img.src = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${folderName}/${u.avatar}`;
+            img.width = "240";
+            tmp.appendChild(img);
+            const title = document.createElement("h5");
+            title.textContent = u.name ?? "no name";
+            tmp.appendChild(title);
+            box.appendChild(tmp);
+          }
+        });
+    </script>
+  </body>
+</html>
